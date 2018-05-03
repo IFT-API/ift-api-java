@@ -22,6 +22,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertTrue;
@@ -39,6 +40,8 @@ public class IftApiTestSuite {
 
     private final Moshi moshi = new Moshi.Builder().build();
     private final JsonAdapter<Hello> helloJsonAdapter = moshi.adapter(Hello.class);
+    private final JsonAdapter<Campagne[]> campagneJsonAdapter = moshi.adapter(Campagne[].class);
+    private final JsonAdapter<ProduitDoseReference[]> produitDoseRefAdapter = moshi.adapter(ProduitDoseReference[].class);
     private final JsonAdapter<IftTraitement> iftTraitementJsonAdapter = moshi.adapter(IftTraitement.class);
     private final JsonAdapter<IftSigne> iftSigneJsonAdapter = moshi.adapter(IftSigne.class);
 
@@ -58,6 +61,56 @@ public class IftApiTestSuite {
 
         assertThat(hello.message, notNullValue());
         assertThat(hello.message, is("Hello from IFT API"));
+
+    }
+
+    @Test
+    public void testGetCampagnes() throws IOException {
+
+        Response response = run(IFT_API_SERVER_URL + "/api/campagnes");
+        String jsonData = response.body().string();
+        System.out.println(jsonData);
+
+        if (!response.isSuccessful()){
+            fail(response.body().string());
+        }
+
+        Campagne[] campagnes = campagneJsonAdapter.fromJson(jsonData);
+
+        assertThat(campagnes, notNullValue());
+        assertThat(campagnes.length, greaterThan(0));
+
+    }
+
+    @Test
+    public void testGetProduitDoseReference() throws IOException {
+
+        StringBuilder urlBuilder = new StringBuilder();
+        urlBuilder.append(IFT_API_SERVER_URL ).append("/api/produits-doses-reference?")
+                .append("campagneIdMetier=2018")
+                .append("&cultureIdMetier=1161")
+                .append("&produitLibelle=BOUILLIE%20CAZORLA%2020%20PM")
+                .append(("&type=culture"));
+
+        Response response = run(urlBuilder.toString());
+        String jsonData = response.body().string();
+        System.out.println(jsonData);
+
+        if (!response.isSuccessful()){
+            fail(response.body().string());
+        }
+
+        ProduitDoseReference[] produitDoseReferences = produitDoseRefAdapter.fromJson(jsonData);
+
+        assertThat(produitDoseReferences, notNullValue());
+        assertThat(produitDoseReferences.length, is(1));
+        ProduitDoseReference res = produitDoseReferences[0];
+        assertThat(res.campagne.idMetier, is("2018"));
+        assertThat(res.culture.idMetier, is("1161"));
+        assertThat(res.produit.libelle, is("BOUILLIE CAZORLA 20 PM"));
+        assertThat(res.numeroAmm.idMetier, is("2100061"));
+        assertThat(res.biocontrol, is(false));
+        assertThat(res.dose, is(25.0));
 
     }
 
@@ -104,14 +157,48 @@ public class IftApiTestSuite {
 
     /**
      * DTO section
+     *
+     * The DTO definition is not exhaustive here
+     * Only useful properties have been defined (for testing purpose)
      */
     static public class Hello {
         String message;
     }
 
+    static public class Campagne {
+        String idMetier;
+        String libelle;
+        boolean active;
+    }
+
+    static public class Culture {
+        String idMetier;
+        String libelle;
+        //...
+    }
+
+    static public class Produit {
+        String libelle;
+    }
+
+    static public class NumeroAmm {
+        String idMetier;
+    }
+
+    static public class ProduitDoseReference {
+        Campagne campagne;
+        Culture culture;
+        Produit produit;
+        NumeroAmm numeroAmm;
+        Double dose;
+        boolean biocontrol;
+        //...
+    }
+
     static public class IftTraitement {
         Double ift;
         Double doseReference;
+        //...
     }
 
     static public class IftSigne {
@@ -119,6 +206,11 @@ public class IftApiTestSuite {
         String signature;
     }
 
+    /**
+     * Allow to decode and verify signature with JWKS endpoint (/.well-known/jwks.json)
+     * @param signature
+     * @return
+     */
     private boolean verifySignature(String signature){
 
         try {
@@ -139,6 +231,8 @@ public class IftApiTestSuite {
 
     /**
      * Public key provider
+     * Use JWKS endpoint.
+     * @see https://tools.ietf.org/html/rfc7517 for more details about jwks
      */
     private RSAKeyProvider getPublicKeyProvider() throws MalformedURLException {
         RSAKeyProvider keyProvider = new RSAKeyProvider() {
@@ -206,6 +300,7 @@ public class IftApiTestSuite {
 
         return run(urlBuilder.toString());
     }
+
     /**
      * Internal helper for running http request
      * @param url
