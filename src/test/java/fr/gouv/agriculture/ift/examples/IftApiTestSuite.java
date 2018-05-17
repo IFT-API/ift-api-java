@@ -30,9 +30,7 @@ import static org.junit.Assert.fail;
 
 public class IftApiTestSuite {
 
-    //TODO replace with PPRD Url when new back-end version will be deployed
-    //public static final String IFT_API_SERVER_URL = "https://alim-pprd.agriculture.gouv.fr/ift-api";
-    public static final String IFT_API_SERVER_URL = "http://localhost:3200";
+    public static final String IFT_API_SERVER_URL = "https://alim-pprd.agriculture.gouv.fr/ift-api";
     public static final MediaType JSON
             = MediaType.parse("application/json; charset=utf-8");
 
