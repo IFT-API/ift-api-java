@@ -245,9 +245,6 @@ public class IftApiTestSuite {
                         Jwk jwk = provider.get(kid);
 
                         return (RSAPublicKey) jwk.getPublicKey();
-                        //return (RSAPublicKey) getCertificate().getPublicKey();
-                    //} catch (CertificateException e) {
-                    //    e.printStackTrace();
                     } catch (InvalidPublicKeyException e) {
                         e.printStackTrace();
                     } catch (JwkException e) {
